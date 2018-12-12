@@ -1,0 +1,30 @@
+INCLUDE(FindPkgConfig)
+PKG_CHECK_MODULES(PC_APPLICATIONS applications)
+
+FIND_PATH(
+    APPLICATIONS_INCLUDE_DIRS
+    NAMES applications/api.h
+    HINTS $ENV{APPLICATIONS_DIR}/include
+        ${PC_APPLICATIONS_INCLUDEDIR}
+    PATHS ${CMAKE_INSTALL_PREFIX}/include
+          /usr/local/include
+          /usr/include
+)
+
+FIND_LIBRARY(
+    APPLICATIONS_LIBRARIES
+    NAMES gnuradio-applications
+    HINTS $ENV{APPLICATIONS_DIR}/lib
+        ${PC_APPLICATIONS_LIBDIR}
+    PATHS ${CMAKE_INSTALL_PREFIX}/lib
+          ${CMAKE_INSTALL_PREFIX}/lib64
+          /usr/local/lib
+          /usr/local/lib64
+          /usr/lib
+          /usr/lib64
+)
+
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(APPLICATIONS DEFAULT_MSG APPLICATIONS_LIBRARIES APPLICATIONS_INCLUDE_DIRS)
+MARK_AS_ADVANCED(APPLICATIONS_LIBRARIES APPLICATIONS_INCLUDE_DIRS)
+

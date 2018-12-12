@@ -30,3 +30,16 @@
 *.exe
 *.out
 *.app
+
+# Examples
+examples/*
+
+# Build
+build/
+
+# Temporary Files
+.DS_Store
+*.swp
+*.dat
+*.orig
+.vscode
