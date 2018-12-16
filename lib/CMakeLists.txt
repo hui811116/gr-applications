@@ -28,6 +28,7 @@ link_directories(${Boost_LIBRARY_DIRS} ${OpenCV_LIBS})
 list(APPEND applications_sources
     video_source.cc
     image_source.cc
+    content_sender.cc
 )
 
 set(applications_sources "${applications_sources}" PARENT_SCOPE)

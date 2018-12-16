@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<block>
+  <name>Content Sender</name>
+  <key>applications_content_sender</key>
+  <category>[applications]</category>
+  <import>import applications</import>
+  <make>applications.content_sender($bpp,$useack)</make>
+  <!-- Make one 'param' node for every Parameter you want settable from the GUI.
+       Sub-nodes:
+       * name
+       * key (makes the value accessible as $keyname, e.g. in the make node)
+       * type -->
+  <param>
+    <name>Bytes per Packet</name>
+    <key>bpp</key>
+    <value>1024</value>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Use ACK</name>
+    <key>useack</key>
+    <value>False</value>
+    <type>bool</type>
+  </param>
+
+  <!-- Make one 'sink' node per input. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <sink>
+    <name>src_in</name>
+    <type>message</type>
+  </sink>
+  <sink>
+    <name>msg_in</name>
+    <type>message</type>
+    <optional>1</optional>
+  </sink>
+  <!-- Make one 'source' node per output. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <source>
+    <name>msg_out</name>
+    <type>message</type>
+  </source>
+</block>

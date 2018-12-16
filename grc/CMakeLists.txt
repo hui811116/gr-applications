@@ -19,5 +19,6 @@
 
 install(FILES
     applications_video_source.xml
-    applications_image_source.xml DESTINATION share/gnuradio/grc/blocks
+    applications_image_source.xml
+    applications_content_sender.xml DESTINATION share/gnuradio/grc/blocks
 )
