@@ -24,5 +24,6 @@ install(FILES
     api.h
     video_source.h
     image_source.h
-    content_sender.h DESTINATION include/applications
+    content_sender.h
+    content_receiver.h DESTINATION include/applications
 )
