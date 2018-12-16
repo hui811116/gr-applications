@@ -36,7 +36,7 @@ namespace gr {
     {
     public:
       typedef boost::shared_ptr<content_receiver> sptr;
-      static sptr make();
+      static sptr make(bool returnAck);
     };
 
   } // namespace applications
