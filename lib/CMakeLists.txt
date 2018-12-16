@@ -29,6 +29,8 @@ list(APPEND applications_sources
     video_source.cc
     image_source.cc
     content_sender.cc
+    content_receiver.cc
+    image_sink.cc
 )
 
 set(applications_sources "${applications_sources}" PARENT_SCOPE)

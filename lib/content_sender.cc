@@ -24,12 +24,13 @@
 
 #include <gnuradio/io_signature.h>
 #include <applications/content_sender.h>
+#include <gnuradio/block_detail.h>
 #include <cstring>
 #include <cmath>
 
 namespace gr {
   namespace applications {
-    #define d_debug true
+    #define d_debug false
     #define dout d_debug && std::cout
   	#define SENDER_HDR_SIZE 4
     class content_sender_impl : public content_sender
@@ -56,7 +57,7 @@ namespace gr {
     	}
     	~content_sender_impl()
     	{
-
+            delete [] d_mem;
     	}
     	void src_in(pmt::pmt_t src)
     	{

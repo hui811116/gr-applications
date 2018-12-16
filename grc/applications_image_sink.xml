@@ -1,35 +1,22 @@
 <?xml version="1.0"?>
 <block>
-  <name>Content Tx</name>
-  <key>applications_content_sender</key>
+  <name>Image Sink</name>
+  <key>applications_image_sink</key>
   <category>[applications]</category>
   <import>import applications</import>
-  <make>applications.content_sender($bpp,$useack)</make>
+  <make>applications.image_sink()</make>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name
        * key (makes the value accessible as $keyname, e.g. in the make node)
        * type -->
+  <!--
   <param>
-    <name>Bytes per Packet</name>
-    <key>bpp</key>
-    <value>1024</value>
-    <type>int</type>
+    <name>...</name>
+    <key>...</key>
+    <type>...</type>
   </param>
-  <param>
-    <name>Use ACK</name>
-    <key>useack</key>
-    <value>No</value>
-    <type>bool</type>
-    <option>
-      <name>Yes</name>
-      <key>True</key>
-    </option>
-    <option>
-      <name>No</name>
-      <key>False</key>
-    </option>
-  </param>
+-->
 
   <!-- Make one 'sink' node per input. Sub-nodes:
        * name (an identifier for the GUI)
@@ -37,21 +24,19 @@
        * vlen
        * optional (set to 1 for optional inputs) -->
   <sink>
-    <name>src_in</name>
+    <name>cnt_in</name>
     <type>message</type>
   </sink>
-  <sink>
-    <name>msg_in</name>
-    <type>message</type>
-    <optional>1</optional>
-  </sink>
+
   <!-- Make one 'source' node per output. Sub-nodes:
        * name (an identifier for the GUI)
        * type
        * vlen
        * optional (set to 1 for optional inputs) -->
+  <!--
   <source>
-    <name>msg_out</name>
-    <type>message</type>
+    <name>out</name>
+    <type></type>
   </source>
+-->
 </block>
