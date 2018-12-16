@@ -19,8 +19,16 @@
   <param>
     <name>Use ACK</name>
     <key>useack</key>
-    <value>False</value>
+    <value>No</value>
     <type>bool</type>
+    <option>
+      <name>Yes</name>
+      <key>True</key>
+    </option>
+    <option>
+      <name>No</name>
+      <key>False</key>
+    </option>
   </param>
 
   <!-- Make one 'sink' node per input. Sub-nodes:

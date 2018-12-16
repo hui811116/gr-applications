@@ -29,6 +29,8 @@
 
 namespace gr {
   namespace applications {
+    #define d_debug true
+    #define dout d_debug && std::cout
   	#define SENDER_HDR_SIZE 4
     class content_sender_impl : public content_sender
     {
@@ -76,10 +78,14 @@ namespace gr {
     	}
     	void msg_in(pmt::pmt_t msg)
     	{
-    		pmt::pmt_t k = pmt::car(msg);
-    		pmt::pmt_t v = pmt::cdr(msg);
+    		//pmt::pmt_t k = pmt::car(msg);
+    		//pmt::pmt_t v = pmt::cdr(msg);
+
     		//FIXME
-    		d_get_ack.notify_one();
+            if(d_ack_cnt == d_send_cnt && d_ack_cnt<d_total_packets){
+                d_ack_cnt++;
+                d_get_ack.notify_one();
+            }
     	}
     	bool start()
     	{
@@ -150,8 +156,9 @@ namespace gr {
     				while(!d_finished && (d_send_cnt<d_total_packets)){
     					gen_pkt();
     					message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_pkt));
-    					d_get_ack.timed_wait(lock,boost::posix_time::milliseconds(1000));
-    					lock.unlock();
+                        gr::thread::scoped_lock guard(d_mutex);
+    					d_get_ack.timed_wait(guard,boost::posix_time::milliseconds(1000));
+    					guard.unlock();
     					if(d_finished){
     						return;
     					}else if(d_ack_cnt == d_send_cnt+1){
