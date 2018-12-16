@@ -1,22 +1,29 @@
 <?xml version="1.0"?>
 <block>
-  <name>Content Rx</name>
+  <name>Content Receiver</name>
   <key>applications_content_receiver</key>
   <category>[applications]</category>
   <import>import applications</import>
-  <make>applications.content_receiver()</make>
+  <make>applications.content_receiver($rack)</make>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name
        * key (makes the value accessible as $keyname, e.g. in the make node)
        * type -->
-  <!--
   <param>
-    <name>...</name>
-    <key>...</key>
-    <type>...</type>
+    <name>Use Ack</name>
+    <key>rack</key>
+    <value>False</value>
+    <type>bool</type>
+    <option>
+      <name>Yes</name>
+      <key>True</key>
+    </option>
+    <option>
+      <name>No</name>
+      <key>False</key>
+    </option>
   </param>
-  -->
   <!-- Make one 'sink' node per input. Sub-nodes:
        * name (an identifier for the GUI)
        * type
@@ -37,7 +44,7 @@
     <type>message</type>
   </source>
   <source>
-    <name>msg_out</name>
+    <name>ack_out</name>
     <type>message</type>
     <optional>1</optional>
   </source>

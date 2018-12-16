@@ -26,3 +26,4 @@ GR_SWIG_BLOCK_MAGIC2(applications, content_sender);
 GR_SWIG_BLOCK_MIGIC2(applications, content_receiver);
 %include "applications/image_sink.h"
 GR_SWIG_BLOCK_MAGIC2(applications, image_sink);
+
