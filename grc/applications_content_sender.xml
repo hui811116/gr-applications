@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <block>
-  <name>Content Tx</name>
+  <name>Content Sender</name>
   <key>applications_content_sender</key>
   <category>[applications]</category>
   <import>import applications</import>
