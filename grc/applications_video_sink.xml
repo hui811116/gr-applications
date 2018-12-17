@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<block>
+  <name>Video Sink</name>
+  <key>applications_video_sink</key>
+  <category>[applications]</category>
+  <import>import applications</import>
+  <make>applications.video_sink($fps)</make>
+  <!-- Make one 'param' node for every Parameter you want settable from the GUI.
+       Sub-nodes:
+       * name
+       * key (makes the value accessible as $keyname, e.g. in the make node)
+       * type -->
+  <param>
+    <name>Frame Per Second</name>
+    <key>fps</key>
+    <value>40</value>
+    <type>int</type>
+  </param>
+
+  <!-- Make one 'sink' node per input. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <sink>
+    <name>frm_in</name>
+    <type>message</type>
+  </sink>
+
+  <!-- Make one 'source' node per output. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+
+</block>

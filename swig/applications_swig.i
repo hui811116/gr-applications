@@ -13,6 +13,7 @@
 #include "applications/content_sender.h"
 #include "applications/content_receiver.h"
 #include "applications/image_sink.h"
+#include "applications/video_sink.h"
 %}
 
 
@@ -26,3 +27,5 @@ GR_SWIG_BLOCK_MAGIC2(applications, content_sender);
 GR_SWIG_BLOCK_MAGIC2(applications, content_receiver);
 %include "applications/image_sink.h"
 GR_SWIG_BLOCK_MAGIC2(applications, image_sink);
+%include "applications/video_sink.h"
+GR_SWIG_BLOCK_MAGIC2(applications, video_sink);

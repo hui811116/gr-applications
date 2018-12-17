@@ -30,7 +30,7 @@
 
 namespace gr {
   namespace applications {
-
+    #define FRAME_JPEG_COMPRESSION_QUALITY 90
     class video_source_impl : public video_source
     {
     	public:
@@ -43,6 +43,7 @@ namespace gr {
     			message_port_register_out(d_out_port);
     			d_fname = initFile;
                 d_frame_duration = 1000/fps;
+                d_video_in.open(d_fname);
     		}
     		~video_source_impl()
     		{
@@ -61,7 +62,6 @@ namespace gr {
     		bool stop()
     		{
     			d_finished = true;
-                d_send_ctrl.notify_one();
                 d_play_video.notify_one();
     			d_thread->interrupt();
                 d_display->interrupt();
@@ -73,50 +73,49 @@ namespace gr {
     			gr::thread::scoped_lock guard(d_mutex);
     			if(!filename.empty() && d_fname!=filename){
     				d_fname = filename;
+                    d_video_in.open(d_fname);
     			}
     		}
     		std::string get_fname() const{
     			return d_fname;
     		}
     		void set_resend(bool button){
-    			if(button){
-    				d_send_ctrl.notify_one();
+    			if(button && !d_video_in.isOpened()){
+    				d_video_in.open(d_fname);
+                    d_send_ctrl.notify_one();
     			}
     		}
 
     	private:
     		void run()
     		{
-    			cv::VideoCapture video_in;
     			cv::Mat frame;
                 std::vector<uint8_t> temp;
                 std::vector<int> enc_params;
                 enc_params.push_back(cv::IMWRITE_JPEG_QUALITY);
-                enc_params.push_back(90); // compression quality
+                enc_params.push_back(FRAME_JPEG_COMPRESSION_QUALITY); // compression quality                
+                
     			while(!d_finished){
-    				video_in.open(d_fname);
-    				if( !video_in.isOpened()){
-    					// no data
+    				if( !d_video_in.isOpened()){
+                        gr::thread::scoped_lock lock(d_mutex);
+    					d_send_ctrl.wait(lock);
+                        lock.unlock();
     				}else{
-    					while(!d_finished){
-    						video_in >> frame;
-    						if(frame.empty()){
-    							// end of video content
-    							break;
-    						}
+    					d_video_in >> frame;
+    					if(frame.empty()){
+    						// end of video content
+                            d_video_in.release();
+                            d_playlist.push(d_fname);
+                            d_play_video.notify_one(); // call play
+    				    }else{
                             temp.clear();
                             cv::imencode(".jpg",frame,temp,enc_params);
                             d_bpkt = pmt::make_blob(temp.data(),temp.size());
-                            message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_bpkt));
-    					}
-                        video_in.release();
-                        d_playlist.push(d_fname);
-                        d_play_video.notify_one(); // call play
+                            message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_bpkt));    
+                        }
     				}
-                    gr::thread::scoped_lock lock(d_mutex);
-                    d_send_ctrl.wait(lock);
-                    lock.unlock();
     			}
+                
     		}
             void play()
             {
@@ -125,28 +124,25 @@ namespace gr {
                 std::string win_name = "Video Source";
                 cv::namedWindow(win_name, cv::WINDOW_AUTOSIZE);
                 while(!d_finished){
-                    gr::thread::scoped_lock lock(d_mutex);
-                    d_play_video.wait(lock);
-                    lock.unlock();
                     if(d_playlist.empty()){
-                        continue;
-                    }
-                    video_in.open(d_playlist.front());
-                    if(!video_in.isOpened()){
-                        continue;
-                    }
-                    while(!d_finished){
-                        video_in >> frame;
-                        if(frame.empty()){
-                            break;
+                        gr::thread::scoped_lock lock(d_mutex);
+                        d_play_video.wait(lock);
+                        lock.unlock();    
+                    }else{
+                        video_in.open(d_playlist.front());
+                        if(video_in.isOpened()){
+                            video_in >> frame;
+                            if(frame.empty()){
+                                video_in.release();
+                            }else{
+                                cv::imshow(win_name,frame);
+                                gr::thread::scoped_lock flow(d_mutex);
+                                d_flow_ctrl.timed_wait(flow, boost::posix_time::milliseconds(d_frame_duration));
+                                flow.unlock();
+                            }
                         }
-                        cv::imshow(win_name,frame);                        
-                        gr::thread::scoped_lock flow(d_mutex);
-                        d_flow_ctrl.timed_wait(flow, boost::posix_time::milliseconds(d_frame_duration));
-                        flow.unlock();
+                        d_playlist.pop();
                     }
-                    video_in.release();
-                    d_playlist.pop();
                 }
             }
 
@@ -162,6 +158,7 @@ namespace gr {
     		bool d_finished;
             int d_frame_duration;
             std::queue<std::string> d_playlist;
+            cv::VideoCapture d_video_in;
     };
 
     video_source::sptr
