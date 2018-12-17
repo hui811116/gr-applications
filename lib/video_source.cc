@@ -26,7 +26,7 @@
 #include <applications/video_source.h>
 #include <gnuradio/block_detail.h>
 #include <opencv2/opencv.hpp>
-#include <sstream>
+#include <queue>
 
 namespace gr {
   namespace applications {
@@ -34,7 +34,7 @@ namespace gr {
     class video_source_impl : public video_source
     {
     	public:
-    		video_source_impl(const std::string& initFile):block( "video_source",
+    		video_source_impl(const std::string& initFile, int fps):block( "video_source",
     			gr::io_signature::make(0,0,0),
     			gr::io_signature::make(0,0,0)),
     			d_out_port(pmt::mp("bytes_out"))
@@ -42,7 +42,7 @@ namespace gr {
     		{
     			message_port_register_out(d_out_port);
     			d_fname = initFile;
-    			d_send_cnt = 0;
+                d_frame_duration = 1000/fps;
     		}
     		~video_source_impl()
     		{
@@ -53,14 +53,20 @@ namespace gr {
     			d_finished = false;
     			d_thread = boost::shared_ptr<gr::thread::thread>(
     				new gr::thread::thread(boost::bind(&video_source_impl::run,this)));
+                d_display = boost::shared_ptr<gr::thread::thread>(
+                    new gr::thread::thread(boost::bind(&video_source_impl::play,this)));;
     			return block::start();
     		}
 
     		bool stop()
     		{
     			d_finished = true;
+                d_send_ctrl.notify_one();
+                d_play_video.notify_one();
     			d_thread->interrupt();
+                d_display->interrupt();
     			d_thread->join();
+                d_display->join();
     			return block::stop();
     		}
     		void set_fname(const std::string& filename){
@@ -74,7 +80,7 @@ namespace gr {
     		}
     		void set_resend(bool button){
     			if(button){
-    				d_flow_ctrl.notify_one();
+    				d_send_ctrl.notify_one();
     			}
     		}
 
@@ -83,51 +89,85 @@ namespace gr {
     		{
     			cv::VideoCapture video_in;
     			cv::Mat frame;
-    			int frame_num;
+                std::vector<uint8_t> temp;
+                std::vector<int> enc_params;
+                enc_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+                enc_params.push_back(90); // compression quality
     			while(!d_finished){
     				video_in.open(d_fname);
     				if( !video_in.isOpened()){
     					// no data
     				}else{
-    					cv::namedWindow("Testing Video", cv::WINDOW_AUTOSIZE);
-    					frame_num = 0;
     					while(!d_finished){
     						video_in >> frame;
     						if(frame.empty()){
     							// end of video content
     							break;
     						}
-    						frame_num++;
-    						cv::imshow("Testing Video", frame);
-    						//int delay = 0; // DEBUG
-    						//char c = (char)cv::waitKey(delay);
-    						gr::thread::scoped_lock ffrate(d_mutex);
-    						d_frame_rate.timed_wait(ffrate,boost::posix_time::milliseconds(25));
-    						ffrate.unlock();
-    						//if(c==27) break;
+                            temp.clear();
+                            cv::imencode(".jpg",frame,temp,enc_params);
+                            d_bpkt = pmt::make_blob(temp.data(),temp.size());
+                            message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_bpkt));
     					}
-    					d_send_cnt++; // for debugging purpose
-    					gr::thread::scoped_lock lock(d_mutex);
-    					d_flow_ctrl.wait(lock);
-    					lock.unlock();
+                        video_in.release();
+                        d_playlist.push(d_fname);
+                        d_play_video.notify_one(); // call play
     				}
+                    gr::thread::scoped_lock lock(d_mutex);
+                    d_send_ctrl.wait(lock);
+                    lock.unlock();
     			}
     		}
+            void play()
+            {
+                cv::VideoCapture video_in;
+                cv::Mat frame;
+                std::string win_name = "Video Source";
+                cv::namedWindow(win_name, cv::WINDOW_AUTOSIZE);
+                while(!d_finished){
+                    gr::thread::scoped_lock lock(d_mutex);
+                    d_play_video.wait(lock);
+                    lock.unlock();
+                    if(d_playlist.empty()){
+                        continue;
+                    }
+                    video_in.open(d_playlist.front());
+                    if(!video_in.isOpened()){
+                        continue;
+                    }
+                    while(!d_finished){
+                        video_in >> frame;
+                        if(frame.empty()){
+                            break;
+                        }
+                        cv::imshow(win_name,frame);                        
+                        gr::thread::scoped_lock flow(d_mutex);
+                        d_flow_ctrl.timed_wait(flow, boost::posix_time::milliseconds(d_frame_duration));
+                        flow.unlock();
+                    }
+                    video_in.release();
+                    d_playlist.pop();
+                }
+            }
+
     		const pmt::pmt_t d_out_port;
+            pmt::pmt_t d_bpkt;
     		std::string d_fname;
     		boost::shared_ptr<gr::thread::thread> d_thread;
+            boost::shared_ptr<gr::thread::thread> d_display;
     		gr::thread::condition_variable d_flow_ctrl;
-    		gr::thread::condition_variable d_frame_rate;
+            gr::thread::condition_variable d_send_ctrl;
+    		gr::thread::condition_variable d_play_video;
     		gr::thread::mutex d_mutex;
     		bool d_finished;
-    		int d_send_cnt;
-
+            int d_frame_duration;
+            std::queue<std::string> d_playlist;
     };
 
     video_source::sptr
-    video_source::make(const std::string& fname)
+    video_source::make(const std::string& fname, int fps)
     {
-    	return gnuradio::get_initial_sptr(new video_source_impl(fname));
+    	return gnuradio::get_initial_sptr(new video_source_impl(fname,fps));
     }
 
   } /* namespace applications */
