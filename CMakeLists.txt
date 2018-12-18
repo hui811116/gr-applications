@@ -20,7 +20,7 @@
 ########################################################################
 # Project setup
 ########################################################################
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 project(gr-applications CXX C)
 enable_testing()
 
@@ -56,14 +56,20 @@ endif()
 if(POLICY CMP0026)
     cmake_policy(SET CMP0026 OLD)
 endif()
-if(POLICY CMP0043)
-    cmake_policy(SET CMP0043 OLD)
+#if(POLICY CMP0043)
+#    cmake_policy(SET CMP0043 OLD)
+#endif()
+#if(POLICY CMP0045)
+#    cmake_policy(SET CMP0045 OLD)
+#endif()
+#if(POLICY CMP0046)
+#    cmake_policy(SET CMP0046 OLD)
+#endif()
+if(POLICY_CMP0068)
+    cmake_policy(SET CMP0068 OLD)
 endif()
-if(POLICY CMP0045)
-    cmake_policy(SET CMP0045 OLD)
-endif()
-if(POLICY CMP0046)
-    cmake_policy(SET CMP0046 OLD)
+if(POLICY CMP0081)
+    cmake_policy(SET CMP0081 OLD)
 endif()
 
 ########################################################################
@@ -90,7 +96,7 @@ set(Boost_ADDITIONAL_VERSIONS
     "1.60.0" "1.60" "1.61.0" "1.61" "1.62.0" "1.62" "1.63.0" "1.63" "1.64.0" "1.64"
     "1.65.0" "1.65" "1.66.0" "1.66" "1.67.0" "1.67" "1.68.0" "1.68" "1.69.0" "1.69"
 )
-find_package(Boost "1.35" COMPONENTS filesystem system)
+find_package(Boost "1.35" COMPONENTS filesystem system thread)
 
 if(NOT Boost_FOUND)
     message(FATAL_ERROR "Boost required to compile applications")
@@ -131,6 +137,8 @@ if(APPLE)
         set(CMAKE_BUILD_WITH_INSTALL_RPATH ON CACHE
             BOOL "Do Build Using Library Install RPath" FORCE)
     endif(NOT CMAKE_BUILD_WITH_INSTALL_RPATH)
+
+    add_definitions(-stdlib=libc++)
 endif(APPLE)
 
 ########################################################################
@@ -138,7 +146,7 @@ endif(APPLE)
 ########################################################################
 find_package(CppUnit)
 find_package(Doxygen)
-find_package(OpenCV REQUIRED ) # testing
+find_package(OpenCV REQUIRED) # testing
 
 # Search for GNU Radio and its components and versions. Add any
 # components required to the list of GR_REQUIRED_COMPONENTS (in all
@@ -151,6 +159,9 @@ include(GrVersion)
 
 if(NOT CPPUNIT_FOUND)
     message(FATAL_ERROR "CppUnit required to compile applications")
+endif()
+if(NOT OPENCV_FOUND)
+    message(FATAL_ERROR "OpenCV required to compile applications")
 endif()
 
 ########################################################################

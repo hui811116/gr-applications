@@ -38,13 +38,14 @@ namespace gr {
     	image_source_impl(const std::string& initFile): block("image_source",
     		gr::io_signature::make(0,0,0),
     		gr::io_signature::make(0,0,0)),
-    		d_out_port(pmt::mp("bytes_out"))
+    		d_out_port(pmt::mp("bytes_out")),
+            d_winName("Image Source")
     	{
     		message_port_register_out(d_out_port);
     		d_fname = initFile;
-    		d_send_cnt = 0;
     		d_img_buffer = new char[512*512]; // default image size;
     		d_mem_size = 512*512;
+            cv::namedWindow(d_winName, cv::WINDOW_AUTOSIZE);
     	}
     	~image_source_impl()
     	{
@@ -83,15 +84,14 @@ namespace gr {
     	
     	void run()
     	{
+            
     		cv::Mat image;
     		while(!d_finished){
-    			image = cv::imread( d_fname.c_str(), 1);
+    			image = cv::imread( d_fname.c_str(), cv::IMREAD_ANYCOLOR);
     			if( !image.data){
     				// no data
     			}else{
-    				d_send_cnt++;
-    				//cv::namedWindow("Testing image", cv::WINDOW_AUTOSIZE);
-    				cv::imshow("Image Display", image);
+    				cv::imshow(d_winName, image);
                     // GET BYTES
                     d_file.open(d_fname.c_str(),std::ios::in | std::ios::binary|std::ios::ate );
                     if(d_file.is_open()){
@@ -104,28 +104,13 @@ namespace gr {
                         d_file.close();
                         d_img_out = pmt::make_blob(d_img_buffer,fsize);
                         message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_img_out) );
-                        gr::thread::scoped_lock lock(d_mutex);
-                        d_flow_ctrl.wait(lock);
-                        lock.unlock();
                     }
     			}
+                gr::thread::scoped_lock lock(d_mutex);
+                d_flow_ctrl.wait(lock);
+                lock.unlock();
     		}
     	}
-        /*
-    	bool check_grayscale(const cv::Mat& test){
-    		for(int i=0;i<test.rows;++i){
-    			for(int j=0;j<test.cols;++j){
-    				cv::Vec3b intensity = test.at<cv::Vec3b>(i,j);
-    				uint8_t blue = intensity.val[0];
-    				uint8_t green = intensity.val[1];
-    				uint8_t red = intensity.val[2];
-    				if(blue != green || blue != red){
-    					return false;
-    				}
-    			}
-    		}
-    		return true;
-    	}*/
     	void resize_buffer(int newsize){
     		gr::thread::scoped_lock guard(d_mutex);
     		delete [] d_img_buffer;
@@ -136,12 +121,12 @@ namespace gr {
     		return fsize<d_mem_size;
     	}
     	const pmt::pmt_t d_out_port;
-    	std::string d_fname;
+        const std::string d_winName;
+        std::string d_fname;
     	boost::shared_ptr<gr::thread::thread> d_thread;
     	gr::thread::condition_variable d_flow_ctrl;
     	gr::thread::mutex d_mutex;
     	bool d_finished;
-    	int d_send_cnt;
     	int d_mem_size;
     	pmt::pmt_t d_img_out;
     	char * d_img_buffer;

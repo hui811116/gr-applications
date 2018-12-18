@@ -75,6 +75,7 @@ target_link_libraries(
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
   ${CPPUNIT_LIBRARIES}
+  ${OpenCV_LIBS}
   gnuradio-applications
 )
 
