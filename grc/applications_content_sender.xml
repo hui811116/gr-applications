@@ -19,7 +19,7 @@
   <param>
     <name>Use ACK</name>
     <key>useack</key>
-    <value>No</value>
+    <value>False</value>
     <type>bool</type>
     <option>
       <name>Yes</name>

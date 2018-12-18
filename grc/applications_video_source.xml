@@ -4,16 +4,16 @@
   <key>applications_video_source</key>
   <category>[applications]</category>
   <import>import applications</import>
-  <make>applications.video_source($fname,$fps)</make>
-  <callback>set_fname($fname)</callback>
+  <make>applications.video_source($fname,$display)</make>
   <callback>set_resend($button)</callback>
+  <callback>set_display($display)</callback>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name
        * key (makes the value accessible as $keyname, e.g. in the make node)
        * type -->
   <param>
-    <name>File Name</name>
+    <name>File Name or Cam</name>
     <key>fname</key>
     <value></value>
     <type>file_open</type>
@@ -25,10 +25,10 @@
     <type>bool</type>
   </param>
   <param>
-    <name>Frame Per Second</name>
-    <key>fps</key>
-    <value>40</value>
-    <type>int</type>
+    <name>Display</name>
+    <key>display</key>
+    <value>True</value>
+    <type>bool</type>
   </param>
   <!-- Make one 'sink' node per input. Sub-nodes:
        * name (an identifier for the GUI)

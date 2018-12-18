@@ -36,9 +36,9 @@ namespace gr {
     {
     public:
       typedef boost::shared_ptr<video_source> sptr;
-      static sptr make(const std::string& fname, int fps);
-      virtual void set_fname(const std::string& fname) = 0;
+      static sptr make(const std::string& fname, bool show);
       virtual void set_resend(bool button) =0;
+      virtual void set_display(bool show) =0;
     };
 
   } // namespace applications
