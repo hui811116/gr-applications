@@ -1,5 +1,5 @@
 # gr-applications
-Application interface for gnuradio simulation or USRP transmissions
+Application interface (images, videos) for gnuradio simulation or USRP transmissions
 
 # Installation
 
