@@ -43,6 +43,7 @@ namespace gr {
     	{
     		message_port_register_in(d_in_port);
     		set_msg_handler(d_in_port,boost::bind(&image_sink_impl::img_in,this,_1));
+            cv::namedWindow(d_win_name,cv::WINDOW_AUTOSIZE);
     	}
     	~image_sink_impl()
     	{
@@ -58,8 +59,6 @@ namespace gr {
     		if(!d_image.data){
     			// failed
     		}else{
-    			cv::destroyAllWindows();
-    			cv::namedWindow(d_win_name,cv::WINDOW_AUTOSIZE);
     			cv::imshow(d_win_name,d_image);
     		}
     	}

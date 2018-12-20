@@ -75,17 +75,19 @@ namespace gr {
     			reset_counters();
     		}
     		if(d_ack){
+                dout<<"Content Receiver, ACK MODE, received index="<<rx_pkt_cnt<<std::endl;
+                for(int i=0;i<4;i++)
+                    d_ack_msg[i] = uvec[i%2+2];
+                pmt::pmt_t ackMsg = pmt::make_blob(d_ack_msg,RX_ACK_BYTES);
+                message_port_pub(d_ack_out,pmt::cons(pmt::PMT_NIL,ackMsg));
+                if(d_rx_bytes + (io-CONTENT_HEADER_BYTES) > d_buf_size){
+                    throw std::runtime_error("ERROR: Content Receiver Memory overflow");
+                }
                 if(rx_pkt_cnt == d_ack_cnt){
+                    dout<<"Content Receiver, Write bytes-- ack_cnt="<<d_ack_cnt<<", bytes_write="<<(io-CONTENT_HEADER_BYTES)<<std::endl;
                     d_ack_cnt++;
-                    for(int i=0;i<4;i++)
-                        d_ack_msg[i] = uvec[i%2+2];
-                    pmt::pmt_t ackMsg = pmt::make_blob(d_ack_msg,RX_ACK_BYTES);
-                    message_port_pub(d_ack_out,pmt::cons(pmt::PMT_NIL,ackMsg));
-                    if(d_rx_bytes + (io-CONTENT_HEADER_BYTES) > d_buf_size){
-                        throw std::runtime_error("ERROR: Content Receiver Memory overflow");
-                    }
                     memcpy(&d_buf[d_rx_bytes],uvec+CONTENT_HEADER_BYTES,io-CONTENT_HEADER_BYTES);
-                    d_rx_bytes += (io-CONTENT_HEADER_BYTES);
+                    d_rx_bytes += (io-CONTENT_HEADER_BYTES);    
                 }
     		}else{
                 if(d_rx_bytes + (io-CONTENT_HEADER_BYTES) > d_buf_size){
