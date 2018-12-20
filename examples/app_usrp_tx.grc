@@ -140,7 +140,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>"name=NI290101"</value>
+      <value>"name=NI2901"</value>
     </param>
   </block>
   <block>
@@ -198,6 +198,53 @@
     </param>
   </block>
   <block>
+    <key>variable_qtgui_push_button</key>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(848, 192)</value>
+    </param>
+    <param>
+      <key>gui_hint</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>resend</value>
+    </param>
+    <param>
+      <key>label</key>
+      <value>Resend Image</value>
+    </param>
+    <param>
+      <key>pressed</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>released</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>bool</value>
+    </param>
+  </block>
+  <block>
     <key>variable</key>
     <param>
       <key>comment</key>
@@ -221,7 +268,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>0.3</value>
+      <value>0.4</value>
     </param>
   </block>
   <block>
@@ -291,7 +338,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>8e6</value>
+      <value>4e6</value>
     </param>
   </block>
   <block>
@@ -453,7 +500,7 @@
     </param>
     <param>
       <key>bpp</key>
-      <value>2048</value>
+      <value>252</value>
     </param>
     <param>
       <key>comment</key>
@@ -465,7 +512,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -489,7 +536,7 @@
     </param>
     <param>
       <key>useack</key>
-      <value>False</value>
+      <value>True</value>
     </param>
   </block>
   <block>
@@ -508,11 +555,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>fname</key>
-      <value>/home/hui/Downloads/HDRI_Sample_Scene_Balls_(JPEG-HDR).jpg</value>
+      <value>/home/hui/Downloads/test_images/lena-256x256.jpg</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -536,7 +583,7 @@
     </param>
     <param>
       <key>button</key>
-      <value>False</value>
+      <value>resend</value>
     </param>
   </block>
   <block>
@@ -602,7 +649,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>filter_size</key>
@@ -2762,7 +2809,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -2937,7 +2984,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -3051,7 +3098,7 @@
     </param>
     <param>
       <key>rate</key>
-      <value>2</value>
+      <value>0</value>
     </param>
   </block>
   <connection>

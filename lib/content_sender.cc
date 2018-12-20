@@ -33,7 +33,7 @@ namespace gr {
     #define dout d_debug && std::cout
   	#define SENDER_HDR_SIZE 4
     #define ACK_SIZE 4
-    #define SENDER_TIMEOUT_MS 50
+    #define SENDER_TIMEOUT_MS 200
     class content_sender_impl : public content_sender
     {
     public:
@@ -55,6 +55,7 @@ namespace gr {
     		d_busy = false;
             d_useAck = useAck;
             d_bytes_per_packet = (bytesPerPacket>0)? bytesPerPacket : 1024;
+            d_send_cnt = 0;
     	}
     	~content_sender_impl()
     	{
@@ -89,8 +90,12 @@ namespace gr {
             uint16_t pktnum = 0x0000;
             if(io == ACK_SIZE){
                 if(uvec[0]==uvec[2] && uvec[1]==uvec[3]){
-                    d_ack_cnt++;
-                    d_get_ack.notify_one();
+                    pktnum = uvec[0];
+                    pktnum |= (uvec[1]<<8);
+                    if(pktnum == d_send_cnt){
+                        d_ack_cnt++;
+                        d_get_ack.notify_one();    
+                    }
                 }
             }
     	}
@@ -133,8 +138,8 @@ namespace gr {
             d_buf[0] = tbytes[0];
             d_buf[1] = tbytes[1];
             char* u8vec = (char*) & d_send_cnt;
-            d_buf[2] = tbytes[2];
-            d_buf[3] = tbytes[3];
+            d_buf[2] = u8vec[0];
+            d_buf[3] = u8vec[1];
     		int tx_bytes = ( (d_send_cnt+1) == d_total_packets)? 
     					   d_total_bytes-d_send_cnt*d_bytes_per_packet : d_bytes_per_packet;
             memcpy(&d_buf[SENDER_HDR_SIZE],&d_mem[d_send_cnt*d_bytes_per_packet],tx_bytes);
@@ -145,7 +150,8 @@ namespace gr {
     		if(!d_useAck){
     			while(!d_finished){
     				if(d_send_cnt<d_total_packets){
-    					gen_pkt();   		
+    					gen_pkt();
+                        dout<<"sending packet "<<d_send_cnt<<" total="<<d_total_packets<<std::endl;		
     					message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_pkt));
     					d_send_cnt++;
     				}
@@ -154,12 +160,14 @@ namespace gr {
                         gr::thread::scoped_lock lock(d_mutex);
                         d_init_session.wait(lock);
                         lock.unlock();
+                        d_send_cnt = 0;
     				}
     			}
     		}else{
     			while(!d_finished){
     				if(d_send_cnt<d_total_packets){
     					gen_pkt();
+                        dout<<"sending packet "<<d_send_cnt<<" total="<<d_total_packets<<std::endl;     
     					message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_pkt));
                         gr::thread::scoped_lock guard(d_mutex);
     					d_get_ack.timed_wait(guard,boost::posix_time::milliseconds(SENDER_TIMEOUT_MS));
@@ -177,6 +185,7 @@ namespace gr {
                         gr::thread::scoped_lock lock(d_mutex);
                         d_init_session.wait(lock);
                         lock.unlock();
+                        d_send_cnt =0;
     				}
     			}
     		}
