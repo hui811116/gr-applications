@@ -29,9 +29,11 @@
 
 namespace gr {
   namespace applications {
-    #define d_debug true
+    #define d_debug 0
     #define dout d_debug && std::cout
   	#define SENDER_HDR_SIZE 4
+    #define ACK_SIZE 4
+    #define SENDER_TIMEOUT_MS 50
     class content_sender_impl : public content_sender
     {
     public:
@@ -48,7 +50,7 @@ namespace gr {
     		set_msg_handler(d_src_port,boost::bind(&content_sender_impl::src_in,this,_1));
     		set_msg_handler(d_in_port,boost::bind(&content_sender_impl::msg_in,this,_1));
 
-    		d_mem = new uint8_t[1024*1024+SENDER_HDR_SIZE]; // default content size
+    		d_mem = new uint8_t[1024*1024]; // default content size
     		d_mem_size = 1024*1024;
     		d_busy = false;
             d_useAck = useAck;
@@ -70,21 +72,26 @@ namespace gr {
     		d_total_bytes = io;
     		d_total_packets = (uint16_t) std::ceil(io/(double)d_bytes_per_packet);
     		_mem_check();
-    		memcpy(d_mem+SENDER_HDR_SIZE, uvec, io); // save 4 bytes space for header
+    		memcpy(d_mem, uvec, io); // save 4 bytes space for header
     		_init_sender();
+            //dout<<"CONTENT SENDER INFO: total bytes="<<io<<" ,divided packets="<<d_total_packets<<std::endl;
     		// set busy
-    		d_busy = true;
+            set_busy(true);
     		d_init_session.notify_one();
     	}
     	void msg_in(pmt::pmt_t msg)
     	{
-    		//pmt::pmt_t k = pmt::car(msg);
-    		//pmt::pmt_t v = pmt::cdr(msg);
-
-    		//FIXME
-            if(d_ack_cnt == d_send_cnt && d_ack_cnt<d_total_packets){
-                d_ack_cnt++;
-                d_get_ack.notify_one();
+    		pmt::pmt_t k = pmt::car(msg);
+    		pmt::pmt_t v = pmt::cdr(msg);
+            size_t io(0);
+            const uint8_t* uvec = pmt::u8vector_elements(v,io);
+            // ACK Format: pktnum 2 bytes + pktnum 2 bytes
+            uint16_t pktnum = 0x0000;
+            if(io == ACK_SIZE){
+                if(uvec[0]==uvec[2] && uvec[1]==uvec[3]){
+                    d_ack_cnt++;
+                    d_get_ack.notify_one();
+                }
             }
     	}
     	bool start()
@@ -105,59 +112,57 @@ namespace gr {
     	}
     private:
     	void _init_sender(){
+            gr::thread::scoped_lock guard(d_mutex);
     		d_send_cnt =0;
     		d_ack_cnt = 0;
     	}
     	void _mem_check(){
     		if(d_mem_size < d_total_bytes){
     			delete [] d_mem;
-    			d_mem = new uint8_t[d_total_bytes+SENDER_HDR_SIZE];
+    			d_mem = new uint8_t[d_total_bytes];
     			d_mem_size = d_total_bytes;
     		}
     	}
-    	void _gen_header(){
-    		// header used for reconstruction
-    		// design: 4 bytes
-    		// details: 16 bits for number of packets, 16 bits for count
-    		uint8_t* tbytes = (uint8_t*) & d_total_packets;
-    		d_mem[d_send_cnt*d_bytes_per_packet] = tbytes[0];
-    		d_mem[d_send_cnt*d_bytes_per_packet+1] = tbytes[1];
-    		uint8_t* u8vec = (uint8_t*) & d_send_cnt;
-    		d_mem[d_send_cnt*d_bytes_per_packet+2] = u8vec[0];
-    		d_mem[d_send_cnt*d_bytes_per_packet+3] = u8vec[1];
-    	}
+        void set_busy(bool state)
+        {
+            gr::thread::scoped_lock guard(d_mutex);
+            d_busy = state;
+        }
     	void gen_pkt(){
-    		_gen_header();
+            char* tbytes = (char*) & d_total_packets;
+            d_buf[0] = tbytes[0];
+            d_buf[1] = tbytes[1];
+            char* u8vec = (char*) & d_send_cnt;
+            d_buf[2] = tbytes[2];
+            d_buf[3] = tbytes[3];
     		int tx_bytes = ( (d_send_cnt+1) == d_total_packets)? 
     					   d_total_bytes-d_send_cnt*d_bytes_per_packet : d_bytes_per_packet;
-    		d_pkt = pmt::make_blob(d_mem+d_send_cnt*d_bytes_per_packet,tx_bytes+SENDER_HDR_SIZE);
+            memcpy(&d_buf[SENDER_HDR_SIZE],&d_mem[d_send_cnt*d_bytes_per_packet],tx_bytes);
+    		d_pkt = pmt::make_blob(d_buf,tx_bytes+SENDER_HDR_SIZE);
     	}
     	void run()
     	{
     		if(!d_useAck){
     			while(!d_finished){
-    				gr::thread::scoped_lock lock(d_mutex);
-    				d_init_session.wait(lock);
-    				lock.unlock();
-    				while(!d_finished && (d_send_cnt<d_total_packets)){
+    				if(d_send_cnt<d_total_packets){
     					gen_pkt();   		
     					message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_pkt));
     					d_send_cnt++;
     				}
     				if(d_send_cnt == d_total_packets){
-    					d_busy = false;
+    					set_busy(false);
+                        gr::thread::scoped_lock lock(d_mutex);
+                        d_init_session.wait(lock);
+                        lock.unlock();
     				}
     			}
     		}else{
     			while(!d_finished){
-    				gr::thread::scoped_lock lock(d_mutex);
-    				d_init_session.wait(lock);
-    				lock.unlock();
-    				while(!d_finished && (d_send_cnt<d_total_packets)){
+    				if(d_send_cnt<d_total_packets){
     					gen_pkt();
     					message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_pkt));
                         gr::thread::scoped_lock guard(d_mutex);
-    					d_get_ack.timed_wait(guard,boost::posix_time::milliseconds(1000));
+    					d_get_ack.timed_wait(guard,boost::posix_time::milliseconds(SENDER_TIMEOUT_MS));
     					guard.unlock();
     					if(d_finished){
     						return;
@@ -168,7 +173,10 @@ namespace gr {
     					}
     				}
     				if(d_send_cnt == d_total_packets){
-    					d_busy = false;
+    					set_busy(false);
+                        gr::thread::scoped_lock lock(d_mutex);
+                        d_init_session.wait(lock);
+                        lock.unlock();
     				}
     			}
     		}
@@ -181,6 +189,7 @@ namespace gr {
     	gr::thread::condition_variable d_init_session;
     	gr::thread::condition_variable d_get_ack;
     	uint8_t* d_mem;
+        char d_buf[8192];
     	int d_mem_size;
     	bool d_busy;
     	bool d_finished;
