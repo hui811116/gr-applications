@@ -5,7 +5,8 @@ Application interface (images, videos) for gnuradio simulation or USRP transmiss
 
 - prerequisite:
   
-  OpenCV (>=4.0.0)
+  + OpenCV (>=4.0.0)
+  + gr-gadgets (for USRP hardwares)
   
 - install gr-applications:
 ```
@@ -17,7 +18,7 @@ make
 sudo make install
 ```
 
-# Supported Data formats:
+# Supported Data Formats:
 
 - Images:
   Integrate OpenCV image reader, thus reads (.bmp, .png, .jpg...)
