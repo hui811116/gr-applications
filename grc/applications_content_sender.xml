@@ -4,12 +4,18 @@
   <key>applications_content_sender</key>
   <category>[applications]</category>
   <import>import applications</import>
-  <make>applications.content_sender($bpp,$useack)</make>
+  <make>applications.content_sender($ms,$bpp,$useack)</make>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name
        * key (makes the value accessible as $keyname, e.g. in the make node)
        * type -->
+  <param>
+    <name>Timeout (ms)</name>
+    <key>ms</key>
+    <value>100</value>
+    <type>int</type>
+  </param>
   <param>
     <name>Bytes per Packet</name>
     <key>bpp</key>

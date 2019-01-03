@@ -36,7 +36,7 @@ namespace gr {
     {
     public:
       typedef boost::shared_ptr<content_sender> sptr;
-      static sptr make(int bytesPerPacket,bool useAck);
+      static sptr make(int timeoutms, int bytesPerPacket,bool useAck);
     };
 
   } // namespace applications

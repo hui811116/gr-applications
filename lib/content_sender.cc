@@ -26,6 +26,7 @@
 #include <applications/content_sender.h>
 #include <cstring>
 #include <cmath>
+#include <atomic>
 
 namespace gr {
   namespace applications {
@@ -33,11 +34,10 @@ namespace gr {
     #define dout d_debug && std::cout
   	#define SENDER_HDR_SIZE 4
     #define ACK_SIZE 4
-    #define SENDER_TIMEOUT_MS 200
     class content_sender_impl : public content_sender
     {
     public:
-    	content_sender_impl(int bytesPerPacket, bool useAck) : block("content_sender",
+    	content_sender_impl(int timeoutms, int bytesPerPacket, bool useAck) : block("content_sender",
     		gr::io_signature::make(0,0,0),
     		gr::io_signature::make(0,0,0)),
     		d_src_port(pmt::mp("src_in")),
@@ -56,6 +56,7 @@ namespace gr {
             d_useAck = useAck;
             d_bytes_per_packet = (bytesPerPacket>0)? bytesPerPacket : 1024;
             d_send_cnt = 0;
+            d_timeout = timeoutms;
     	}
     	~content_sender_impl()
     	{
@@ -63,7 +64,7 @@ namespace gr {
     	}
     	void src_in(pmt::pmt_t src)
     	{
-    		if(d_busy){
+    		if(d_busy.load()){
     			return;
     		}
     		pmt::pmt_t k = pmt::car(src);
@@ -75,9 +76,8 @@ namespace gr {
     		_mem_check();
     		memcpy(d_mem, uvec, sizeof(char)*io); // save 4 bytes space for header
     		_init_sender();
-            //dout<<"CONTENT SENDER INFO: total bytes="<<io<<" ,divided packets="<<d_total_packets<<std::endl;
     		// set busy
-            set_busy(true);
+            d_busy.store(true);
     		d_init_session.notify_one();
     	}
     	void msg_in(pmt::pmt_t msg)
@@ -128,11 +128,6 @@ namespace gr {
     			d_mem_size = d_total_bytes;
     		}
     	}
-        void set_busy(bool state)
-        {
-            gr::thread::scoped_lock guard(d_mutex);
-            d_busy = state;
-        }
     	void gen_pkt(){
             char* tbytes = (char*) & d_total_packets;
             d_buf[0] = tbytes[0];
@@ -156,7 +151,7 @@ namespace gr {
     					d_send_cnt++;
     				}
     				if(d_send_cnt == d_total_packets){
-    					set_busy(false);
+    					d_busy.store(false);
                         gr::thread::scoped_lock lock(d_mutex);
                         d_init_session.wait(lock);
                         lock.unlock();
@@ -170,7 +165,7 @@ namespace gr {
                         dout<<"sending packet "<<d_send_cnt<<" total="<<d_total_packets<<std::endl;     
     					message_port_pub(d_out_port,pmt::cons(pmt::PMT_NIL,d_pkt));
                         gr::thread::scoped_lock guard(d_mutex);
-    					d_get_ack.timed_wait(guard,boost::posix_time::milliseconds(SENDER_TIMEOUT_MS));
+    					d_get_ack.timed_wait(guard,boost::posix_time::milliseconds(d_timeout));
     					guard.unlock();
     					if(d_finished){
     						return;
@@ -181,7 +176,7 @@ namespace gr {
     					}
     				}
     				if(d_send_cnt == d_total_packets){
-    					set_busy(false);
+                        d_busy.store(false);
                         gr::thread::scoped_lock lock(d_mutex);
                         d_init_session.wait(lock);
                         lock.unlock();
@@ -198,13 +193,14 @@ namespace gr {
     	gr::thread::condition_variable d_init_session;
     	gr::thread::condition_variable d_get_ack;
     	uint8_t* d_mem;
-        char d_buf[8192];
+        char d_buf[8200];
     	int d_mem_size;
-    	bool d_busy;
+    	std::atomic<bool> d_busy;
     	bool d_finished;
     	// system parameters
     	int d_bytes_per_packet;
     	bool d_useAck;
+        int d_timeout;
     	// sender counters
     	int d_total_bytes;
     	uint16_t d_send_cnt;
@@ -214,10 +210,10 @@ namespace gr {
     };
 
     content_sender::sptr
-    content_sender::make(int bytesPerPacket,bool useAck)
+    content_sender::make(int timeoutms,int bytesPerPacket,bool useAck)
     {
     	return gnuradio::get_initial_sptr( 
-            new content_sender_impl(bytesPerPacket,useAck));
+            new content_sender_impl(timeoutms,bytesPerPacket,useAck));
     }
   } /* namespace applications */
 } /* namespace gr */
