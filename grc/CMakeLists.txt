@@ -23,5 +23,6 @@ install(FILES
     applications_content_sender.xml
     applications_content_receiver.xml
     applications_image_sink.xml
-    applications_video_sink.xml DESTINATION share/gnuradio/grc/blocks
+    applications_video_sink.xml
+    applications_transmit_ctrl_sender.xml DESTINATION share/gnuradio/grc/blocks
 )

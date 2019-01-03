@@ -27,5 +27,6 @@ install(FILES
     content_sender.h
     content_receiver.h
     image_sink.h
-    video_sink.h DESTINATION include/applications
+    video_sink.h
+    transmit_ctrl_sender.h DESTINATION include/applications
 )

@@ -73,7 +73,7 @@ namespace gr {
     		d_total_bytes = io;
     		d_total_packets = (uint16_t) std::ceil(io/(double)d_bytes_per_packet);
     		_mem_check();
-    		memcpy(d_mem, uvec, io); // save 4 bytes space for header
+    		memcpy(d_mem, uvec, sizeof(char)*io); // save 4 bytes space for header
     		_init_sender();
             //dout<<"CONTENT SENDER INFO: total bytes="<<io<<" ,divided packets="<<d_total_packets<<std::endl;
     		// set busy
@@ -142,7 +142,7 @@ namespace gr {
             d_buf[3] = u8vec[1];
     		int tx_bytes = ( (d_send_cnt+1) == d_total_packets)? 
     					   d_total_bytes-d_send_cnt*d_bytes_per_packet : d_bytes_per_packet;
-            memcpy(&d_buf[SENDER_HDR_SIZE],&d_mem[d_send_cnt*d_bytes_per_packet],tx_bytes);
+            memcpy(&d_buf[SENDER_HDR_SIZE],&d_mem[d_send_cnt*d_bytes_per_packet],sizeof(char)*tx_bytes);
     		d_pkt = pmt::make_blob(d_buf,tx_bytes+SENDER_HDR_SIZE);
     	}
     	void run()
