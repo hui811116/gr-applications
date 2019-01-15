@@ -53,9 +53,9 @@ namespace gr {
     		message_port_register_out(d_pkt_port);
     		set_msg_handler(d_item_port,boost::bind(&transmit_ctrl_sender_impl::content_in,this,_1));
     		set_msg_handler(d_ack_port,boost::bind(&transmit_ctrl_sender_impl::ack_in,this,_1));
-    		d_busy = false;
+    		d_busy.store(false);
             d_bytes_per_pkt = bytes_per_pkt; // for debugging
-            d_total_pkts = 0;
+            d_total_pkts.store(0x0000);
             d_arq_head.store(0);
     	}
     	~transmit_ctrl_sender_impl()
@@ -80,6 +80,12 @@ namespace gr {
             }
     		if(u16hdr == d_arq_head.load()){
                 d_arq_head++; // atomic addition
+                if(d_total_pkts.load()>0 && d_arq_head.load() == d_total_pkts.load()){
+                    // reset map, index, busy
+                    d_total_pkts.store(0);
+                    d_busy.store(false);
+                    dout<<"arq head equals to total packets, reset system"<<std::endl;
+                }
     		}
     	}
     	void content_in(pmt::pmt_t msg)
@@ -90,15 +96,21 @@ namespace gr {
     		const uint8_t* uvec = pmt::u8vector_elements(v,io);
     		if(io>d_max_cap)
     			return;
-    		if(d_busy)
+    		if(d_busy.load()== true){
+                dout<<"called busy"<<std::endl;
     			return;
+            }
     		memcpy(d_buffer, uvec, sizeof(char)* io);
             d_total_pkts = (uint16_t) std::ceil(io / (float)d_bytes_per_pkt);
             d_last_bytes = io - d_bytes_per_pkt* (int)std::floor(io/d_bytes_per_pkt);
             uint8_t* u8vec = (uint8_t*) & d_total_pkts;
             d_pkt_buf[0] = u8vec[0];
             d_pkt_buf[1] = u8vec[1];
+            d_pkt_send = 0;
+            d_timeout_map.clear();
+            d_pend_map.clear();
             d_arq_head.store(0);
+            d_busy.store(true);
             d_fctrl.notify_one();            
     	}
     	bool start()
@@ -175,38 +187,29 @@ namespace gr {
     		while(!d_finished)
     		{
                 gr::thread::scoped_lock lock(d_mutex);
-    			if(!d_busy){
-    				d_fctrl.wait(lock);
-    				lock.unlock();
-    				if(d_total_pkts>d_pkt_send)
-    					d_busy = true;
-    			}else{
-    				// running, check window size
-                    if(d_pend_map.size()>=d_windowsize){
-                        //dout<<"pending map size reached window size...wait for notification"<<std::endl;
-                        d_fctrl.wait(lock);
-                        lock.unlock();
+    			// running, check window size
+                if(d_pend_map.size()>=d_windowsize || d_busy.load() == false || d_pkt_send == d_total_pkts){
+                    //dout<<"pending map size reached window size...wait for notification"<<std::endl;
+                    d_fctrl.wait(lock);
+                    lock.unlock();
+                }else{
+                    if(!d_timeout_map.empty()){
+                        it = d_timeout_map.begin();
+                        // send it.first
+                        send_id = it->first;
+                        d_timeout_map.erase(it);    
                     }else{
-                        if(!d_timeout_map.empty()){
-                            it = d_timeout_map.begin();
-                            // send it.first
-                            send_id = it->first;
-                            d_timeout_map.erase(it);    
-                        }else{
-                            send_id = d_pkt_send++;
-                        }
-                        enqueue_pend(send_id);
-                        lock.unlock();
-                        pkt = genPkt(send_id);
-                        message_port_pub(d_pkt_port,pmt::cons(pmt::PMT_NIL,pkt));
-                        // thread timer here
-                        gr::thread::thread t(boost::bind(&transmit_ctrl_sender_impl::thread_timer,this,send_id));
-                        t.detach();
+                        dout<<"run::sending new packet...id="<<d_pkt_send<<", total="<<d_total_pkts<<std::endl;
+                        send_id = d_pkt_send++;
                     }
-                    if(d_arq_head.load()==d_total_pkts){
-                        d_busy = false;
-                    }
-    			}
+                    enqueue_pend(send_id);
+                    lock.unlock();
+                    pkt = genPkt(send_id);
+                    message_port_pub(d_pkt_port,pmt::cons(pmt::PMT_NIL,pkt));
+                    // thread timer here
+                    gr::thread::thread t(boost::bind(&transmit_ctrl_sender_impl::thread_timer,this,send_id));
+                    t.detach();
+                }
     		}
     	}
     	
@@ -220,10 +223,12 @@ namespace gr {
     	boost::shared_ptr<gr::thread::thread> d_sender_ctrl;
     	gr::thread::condition_variable d_fctrl;
     	bool d_finished;
-    	bool d_busy;
+    	//bool d_busy;
+        std::atomic<bool> d_busy;
     	char d_buffer[1024*1024];
     	char d_pkt_buf[8200];
-    	uint16_t d_total_pkts;
+    	//uint16_t d_total_pkts;
+        std::atomic<uint16_t> d_total_pkts;
         int d_last_bytes;
     	int d_pkt_send;
         std::atomic<int> d_arq_head;
