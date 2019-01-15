@@ -48,6 +48,11 @@
        * vlen
        * optional (set to 1 for optional inputs) -->
   <source>
+    <name>ctrl_out</name>
+    <type>message</type>
+    <optional>1</optional>
+  </source>
+  <source>
     <name>pkt_out</name>
     <type>message</type>
   </source>

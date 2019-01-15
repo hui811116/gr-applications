@@ -35,6 +35,7 @@ namespace gr {
     #define d_debug 0
     #define dout d_debug && std::cout
     #define HDRBYTES 4
+    #define CTRL_READY 0x0a
     class transmit_ctrl_sender_impl : public transmit_ctrl_sender
     {
     public:
@@ -44,6 +45,7 @@ namespace gr {
     		d_item_port(pmt::mp("cnt_in")),
     		d_ack_port(pmt::mp("ack_in")),
     		d_pkt_port(pmt::mp("pkt_out")),
+            d_ctrl_port(pmt::mp("ctrl_out")),
     		d_max_cap(1024*1024),
             d_windowsize(windowsize),
             d_timeout_ms(timeout_ms)
@@ -51,6 +53,7 @@ namespace gr {
     		message_port_register_in(d_item_port);
     		message_port_register_in(d_ack_port);
     		message_port_register_out(d_pkt_port);
+            message_port_register_out(d_ctrl_port);
     		set_msg_handler(d_item_port,boost::bind(&transmit_ctrl_sender_impl::content_in,this,_1));
     		set_msg_handler(d_ack_port,boost::bind(&transmit_ctrl_sender_impl::ack_in,this,_1));
     		d_busy.store(false);
@@ -84,6 +87,7 @@ namespace gr {
                     // reset map, index, busy
                     d_total_pkts.store(0);
                     d_busy.store(false);
+                    message_port_pub(d_ctrl_port,pmt::cons(pmt::PMT_NIL,pmt::from_long(CTRL_READY)));
                     dout<<"arq head equals to total packets, reset system"<<std::endl;
                 }
     		}
@@ -219,6 +223,7 @@ namespace gr {
     	const pmt::pmt_t d_item_port;
     	const pmt::pmt_t d_ack_port;
     	const pmt::pmt_t d_pkt_port;
+        const pmt::pmt_t d_ctrl_port;
     	gr::thread::mutex d_mutex;
     	boost::shared_ptr<gr::thread::thread> d_sender_ctrl;
     	gr::thread::condition_variable d_fctrl;
