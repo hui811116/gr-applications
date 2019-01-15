@@ -138,38 +138,33 @@ namespace gr {
             std::map<uint16_t,bool>::iterator it = d_timeout_map.find(id);
             if(it!=d_timeout_map.end())
                 return;
-            d_timeout_map.insert(std::pair<uint16_t,bool>(id,false));
+            d_timeout_map.insert(std::pair<uint16_t,bool>(id,true));
         }
         void enqueue_pend(uint16_t id)
         {
-            std::map<uint16_t,bool>::iterator it = d_pend_map.find(id);
+            std::map<uint16_t,boost::posix_time::ptime>::iterator it = d_pend_map.find(id);
             if(it!=d_pend_map.end())
                 return;
-            d_pend_map.insert(std::pair<uint16_t,bool>(id,false));
+            d_pend_map.insert(std::pair<uint16_t,boost::posix_time::ptime>
+                (id,boost::posix_time::microsec_clock::local_time()));
         }
         bool dequeue_pend(uint16_t id)
         {
-            std::map<uint16_t,bool>::iterator it = d_pend_map.find(id);
+            std::map<uint16_t,boost::posix_time::ptime>::iterator it = d_pend_map.find(id);
             if(it==d_pend_map.end())
                 return false;
             d_pend_map.erase(it);
             return true;
         }
     private:
-        void thread_timer(uint16_t pkt_id)
+        void check_time()
         {
-            boost::this_thread::sleep(boost::posix_time::milliseconds(d_timeout_ms));
-            //dout<<"thread timer timeout...sendid="<<pkt_id<<std::endl;
-            // try lock?
-            while(!d_finished){
-                if(d_mutex.try_lock()){
-                    if(dequeue_pend(pkt_id)){
-                        // timeout
-                        enqueue_timeout(pkt_id);
-                        d_fctrl.notify_one();
-                    }
-                    d_mutex.unlock();
-                    break;
+            std::map<uint16_t,boost::posix_time::ptime>::iterator it;
+            boost::posix_time::time_duration diff; 
+            for(it = d_pend_map.begin(); it != d_pend_map.end(); ++it ){
+                diff = boost::posix_time::microsec_clock::local_time() - it->second;
+                if(diff.total_milliseconds() >= d_timeout_ms){
+                    enqueue_timeout(it->first);
                 }
             }
         }
@@ -190,13 +185,14 @@ namespace gr {
     		// thread operation
     		while(!d_finished)
     		{
-                gr::thread::scoped_lock lock(d_mutex);
     			// running, check window size
                 if(d_pend_map.size()>=d_windowsize || d_busy.load() == false || d_pkt_send == d_total_pkts){
                     //dout<<"pending map size reached window size...wait for notification"<<std::endl;
+                    gr::thread::scoped_lock lock(d_mutex);
                     d_fctrl.wait(lock);
                     lock.unlock();
                 }else{
+                    check_time(); // non detaching thread method
                     if(!d_timeout_map.empty()){
                         it = d_timeout_map.begin();
                         // send it.first
@@ -207,12 +203,10 @@ namespace gr {
                         send_id = d_pkt_send++;
                     }
                     enqueue_pend(send_id);
-                    lock.unlock();
                     pkt = genPkt(send_id);
                     message_port_pub(d_pkt_port,pmt::cons(pmt::PMT_NIL,pkt));
-                    // thread timer here
-                    gr::thread::thread t(boost::bind(&transmit_ctrl_sender_impl::thread_timer,this,send_id));
-                    t.detach();
+                    // non thread method, force sleep, but limited frame rate
+                    boost::this_thread::sleep(boost::posix_time::milliseconds(1));
                 }
     		}
     	}
@@ -228,17 +222,15 @@ namespace gr {
     	boost::shared_ptr<gr::thread::thread> d_sender_ctrl;
     	gr::thread::condition_variable d_fctrl;
     	bool d_finished;
-    	//bool d_busy;
         std::atomic<bool> d_busy;
     	char d_buffer[1024*1024];
     	char d_pkt_buf[8200];
-    	//uint16_t d_total_pkts;
         std::atomic<uint16_t> d_total_pkts;
         int d_last_bytes;
     	int d_pkt_send;
         std::atomic<int> d_arq_head;
     	int d_bytes_per_pkt;
-        std::map<uint16_t,bool> d_pend_map;
+        std::map<uint16_t,boost::posix_time::ptime> d_pend_map;
         std::map<uint16_t,bool> d_timeout_map;
     };
 
